@@ -55,7 +55,7 @@
 % Thesis Info %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	% title
-		\title[離散期末報告]{找出數量為n的集合上有多少遞移關係的數量，對所有正整數 $n$。給出正整數 $n$ 的一般結果（不僅對 $n \leq 7$）。}
+		\title[遞移關係計數]{有限集合上遞移關係數量的計數問題：從暴力法到邊際效能優化}
 	% author 
 	% author 
     % (In the mandatory argument "{}", separate multiple
@@ -90,280 +90,377 @@
 %%%%%%%%%%%%%%%%第一部分
 \section{簡介}
 
-
-%%第一部分第一小節
-\subsection{須知}
-%第一頁
-\begin{frame}{須知}
-\small
-\begin{flushleft}
-\textbf{遞移性關係（Transitive Relations）}：是一種關係，其特點是如果元素 $A$ 和元素 $B$ 之間存在這種關係，且元素 $B$ 和元素 $C$ 之間也存在這種關係，則元素 $A$ 和元素 $C$ 之間必須存在這種關係。
-\\\textbf{遞移關係定義}：$\forall a, b, c \in A$，若 $(a, b) \in R$ 且 $(b, c) \in R$，則 $(a, c) \in R$。
-\end{flushleft}
-\end{frame}
-
-
-
-\subsection{大綱}
-%第一頁
 \begin{frame}{大綱}
 \small
-\begin{flushleft}
-探討關係矩陣的遞移性概念以及如何檢測具有遞移關係的矩陣。主要內容如下：
-
+本研究探討關係矩陣之遞移性檢測演算法，並計算數量為 $n$ 之集合上的遞移關係總數。
 \begin{itemize}
-\item 探討集合內只有兩個元素的情況（n=2），並列出所有可能的組合方式，找到具有遞移關係的組合。
-\item 利用定義，跑出所有矩陣中的元素 (i, k) 和 (k, j)，檢查是否存在 (i, j) 來判斷矩陣的遞移性。
-\item 使用 Python 程式碼生成 n*n 的矩陣，並使用位元運算和迴圈生成所有可能的矩陣。檢查所有矩陣，判斷是否具有遞移關係。
-\item 印出具有遞移關係的矩陣，並計算具有遞移關係的矩陣的數量。
+    \item \textbf{製作動機}：為什麼會選這個題目
+    \item \textbf{基礎理論}：以 $n=2$ 為例，列舉 $2^{n^2}$ 種關係並檢驗遞移性。
+    \item \textbf{演算法實作}：從基礎暴力法 ($O(n^3)$) 到優化演算法。
+    \item \textbf{效能瓶頸分析}：探討組合爆炸問題（Combinatorial Explosion），解釋為何當 $n > 5$ 時運算量激增。
+    \item \textbf{實驗結果}：比對優化前後之加速倍率，並對照 OEIS A006905 序列數值。
 \end{itemize}
+\end{frame}
 
-總結:雖然找到了具有遞移關係的矩陣並計算出了數量。但是因為時間複雜度過高，只能計算出前幾個元素的遞移關係數量。
-\end{flushleft}
+
+%%第一部分第一小節
+%第一頁
+\begin{frame}{基礎定義：遞移律 (Transitivity)}
+    \begin{block}{數學定義}
+        設 $R$ 為集合 $A$ 上的一個關係。若對於所有的 $a, b, c \in A$：
+        \[ (a, b) \in R \quad \text{且} \quad (b, c) \in R \implies (a, c) \in R \]
+        則稱 $R$ 具有\textbf{遞移性}。
+    \end{block}
+
+    \vspace{10pt}
+    \begin{itemize}
+        \item \textbf{直觀理解}：如果有一條路徑可以從 $a$ 走到 $b$，再從 $b$ 走到 $c$，那麼必須存在一條「直達」的邊從 $a$ 直接連向 $c$。
+        \item \textbf{矩陣觀點}：在關係矩陣中，這代表若 $M_{ab}=1$ 且 $M_{bc}=1$，則 $M_{ac}$ 必須為 $1$。
+    \end{itemize}
 \end{frame}
 
 
 
-
-%%第一部分第二小節
-\subsection{製作動機}
-
-%第二頁
+%% 第一部分第二小節：製作動機
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 第二頁
 \begin{frame}{製作動機}
-    \begin{exampleblock}  %灰綠格子 
-		<1->{加強集合的概念與程式碼的實作}
-  %標題與格子出現順序編碼
-  %放大會放不下
-  {\linespread{1}\small
-    \selectfont
-		}
-  {\linespread{1}\small
-    \selectfont
-        \textbf{\begin{itemize}
-            \item  深化對數學邏輯、集合論和關係代數等領域的理解。
-            \item  在圖論、數據分析和人工智慧等領域很常使用
-            \item  探討NP hard的問題
-        \end{itemize}}}
-        \end{exampleblock}
-
+    \begin{exampleblock}{從理論到實作的探索}
+        \small
+        \begin{itemize}
+            \item<1-> \textbf{驗證理論定義}：
+            課本上的遞移律定義較抽象，我想透過程式窮舉所有可能，觀察遞移關係在集合中的真實分佈。
+            
+            \item<2-> \textbf{感受規模成長}：
+            當集合元素增加時，關係總數以 $2^{n^2}$ 劇烈成長。我想親自實作，體驗這種「組合爆炸」對計算帶來的挑戰。
+            
+            \item<3-> \textbf{尋求運算效率}：
+            在面對數以億計的矩陣時，單純的暴力法是否足以應付？我想嘗試不同的程式邏輯來提升檢測速度。
+        \end{itemize}
+    \end{exampleblock}
 \end{frame}
 
 
 %%%%%%%%%%%%%%%%第二部分
-\section{製作全過程}
+\section{實作}
 
 
 %%第二部分第一小節
-\subsection{製作前思考}
-%第五頁
-\begin{frame}{製作前思考}
-	\begin{exampleblock}
-	    <1->{假設集合裡有2個元素1和2，(i.e. A=\{1,2\})}
-     {\linespread{1}\footnotesize
-    \selectfont
-        集合$A \times A$=\{(1,1),(1,2),(2,1),(2,2)\}它有$2^{n^2} = 16$種組合方式，我們要在這些可能裡面找到具有遞移關係的集合，因為n=2而已，所以我先全部列出來方便大家觀察}
-	\end{exampleblock}
-		
+\begin{frame}{實作前思考：實例分析 ($n=2$)}
+    \footnotesize % 全局設定為較小字體
+    針對集合 $A=\{1, 2\}$，其關係總數為 $2^{n^2}=16$ 種。
+    
+    \setlength{\tabcolsep}{3pt} % 縮減表格欄位間距
+    \begin{table}
+        \centering
+        \begin{tabular}{l|l|l}
+            \hline
+            \textbf{序對數量} & \textbf{代表性組合} & \textbf{遞移性檢查} \\ \hline
+            0 組 (1項) & $\emptyset$ & 滿足 (Trivial) \\
+            1 組 (4項) & $\{(1,1)\}, \{(1,2)\}, \dots$ & 滿足 \\
+            2 組 (6項) & $\{(1,1),(1,2)\}, \dots$ & \textcolor{red}{$\{(1,2),(2,1)\} \to$ 缺 $(1,1)$} \\
+            3 組 (4項) & $\{(1,1),(1,2),(2,2)\}, \dots$ & \textcolor{red}{$\{(1,1),(1,2),(2,1)\} \to$ 缺 $(2,2)$} \\
+            4 組 (1項) & $\{(1,1),(1,2),(2,1),(2,2)\}$ & 滿足 \\ \hline
+        \end{tabular}
+    \end{table}
+
+    \begin{columns}[T]
+        \begin{column}{0.5\textwidth}
+            \begin{alertblock}{\scriptsize 非遞移反例判定}
+                \scriptsize
+                \begin{itemize}
+                    \item $\{(1,2), (2,1)\} \implies$ 缺少 $(1,1)$
+                    \item $\{(1,2), (2,1), (2,2)\} \implies$ 缺少 $(1,1)$
+                    \item $\{(1,1), (1,2), (2,1)\} \implies$ 缺少 $(2,2)$
+                \end{itemize}
+            \end{alertblock}
+        \end{column}
+        \begin{column}{0.45\textwidth}
+            \vspace{5pt}
+            \textbf{統計結論：} \\
+            總關係數：$16$ \\
+            非遞移項：$3$ \\
+            \textbf{遞移關係總數：$\mathbf{13}$}
+        \end{column}
+    \end{columns}
 \end{frame}
 
-\begin{frame}{製作前思考}
-    \begin{itemize}
-        \item \textcolor{teal}{\textbf{挑選}}
-        \\\small\selectfont{    當我挑選0組pair時:\{\}
-    \\
-    當我挑選1組pair時:\{(1,1)\}、\{(1,2)\}、\{(2,1)\}、\{(2,2)\}
-    \\
-    當我挑選2組pair時:\{(1,1),(1,2)\}、\{(1,1),(2,1)\}、\{(1,1),(2,2)\}、
-    \par~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\{(1,2),(2,1)\}、\{(1,2),(2,2)\}、\{(2,1),(2,2)\}
-    \\
-    當我挑選3組pair時:\{(1,1),(1,2),(2,1)\}、\{(1,1),(1,2),(2,2)\}、
-    \par~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\{(1,1),(2,1),(2,2)\}、\{(1,2),(2,1),(2,2)\}
-    \\
-    當我挑選4組pair時:\{(1,1),(1,2),(2,1),(2,2)\}}
-        \item \textcolor{teal}{\textbf{判斷哪些不具遞移關係}}
-        \\\small\selectfont{\textbf{\{(1,2),(2,1)\}不具有遞移關係}，因為(1,1)不在集合裡面;
-    \\
-    \textbf{\{(1,1),(1,2),(2,1)\}不具有遞移關係}，因為(2,2)不在集合裡面;
-    \\
-    \textbf{\{(1,2),(2,1),(2,2)\}不具有遞移關係}，因為(1,1)不在集合裡面。
-    \\
-    因此當n=2時，總共有16種可能，有13種關係具有遞移性。}
-    \end{itemize}
-\end{frame}
+\begin{frame}{實作前思考：從集合到矩陣}
+    \small
+    \begin{block}{轉化動機}
+        集合枚舉隨著 $n$ 增加會面臨災難。改用 \textbf{矩陣} 表示關係 $R$，可將遞移性判斷轉化為矩陣運算。
+    \end{block}
 
-\begin{frame}{製作前思考}
     \begin{itemize}
-        \small
-        \item 我發現說如果我找遞移關係都透過集合的方式來找的話，實在太麻煩了，每次都要重複寫一樣的東西，於是我想利用矩陣的方法去探討它的遞移關係。如果一個集合裡有n個元素，則我們假設有一個n*n的矩陣，如果$a_{ik} = 1$代表(i,k)在集合裡面，因此現在的問題變成我們必須去找矩陣符合遞移關係的矩陣數量，也就是說如果$a_{ik} = 1$且$a_{kj} = 1$則$a_{ij} = 1$他才會符合條件，其中$1 \leq i, k, j \leq n$
-        \item 舉個例子，左邊的矩陣代表\{(1,1),(1,2)\}；右邊的矩陣代表\{(1,2),(2,1),(2,2)\}。左邊的矩陣具有遞移關係，而右邊的矩陣不具遞移關係。
+        \item \textbf{矩陣表示}：$a_{ij} = 1 \iff (i, j) \in R$。
+        \item \textbf{遞移判定}：若 $a_{ik} = 1$ 且 $a_{kj} = 1$，則必須 $a_{ij} = 1$。
     \end{itemize}
 
-    \begin{minipage}{0.4\textwidth}
-        \[
-        \begin{bmatrix}
-        1 & 1 \\
-        0 & 0 \\
-        \end{bmatrix}
-        \]
-    \end{minipage}
-    \begin{minipage}{0.4\textwidth}
-        \[
-        \begin{bmatrix}
-        0 & 1 \\
-        1 & 1 \\
-        \end{bmatrix}
-        \]
-    \end{minipage}
+    \begin{columns}[c]
+        \begin{column}{0.45\textwidth}
+            \centering
+            滿足遞移性範例 \\
+            $\{(1,1),(1,2)\}$ \\
+            $\begin{bmatrix} 1 & 1 \\ 0 & 0 \end{bmatrix}$
+        \end{column}
+        \begin{column}{0.1\textwidth}
+            \centering \Large vs
+        \end{column}
+        \begin{column}{0.45\textwidth}
+            \centering
+            \textcolor{red}{不具}遞移性範例 \\
+            $\{(1,2),(2,1),(2,2)\}$ \\
+            $\begin{bmatrix} 0 & 1 \\ 1 & 1 \end{bmatrix}$
+        \end{column}
+    \end{columns}
 \end{frame}
 %%第二部分第二小節
-\subsection{製作流程}
 
 %第九頁
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    用python去跑矩陣 ($n \times n$)，每個位子都有兩種可能，原理大概是 $i=0$ 到 $i=2^{n^2}-1$，將矩陣的所有 0 和 1 的可能都考慮進去，判斷如果 $a_{ik} = 1$ 且 $a_{kj} = 1$ 則 $a_{ij} = 1$ 的話就將計數器加1，以下有兩張圖分別是我怎麼創造所有可能的矩陣，以及如何用python指令判斷這個矩陣它是否為遞移關係
+\subsection{遇到的瓶頸}
+
+\begin{frame}{遇到的瓶頸：窮舉法的困境}
+    \scriptsize % 整頁使用極小字體
+    為了確保不遺漏任何遞移關係，我嘗試「暴力枚舉」所有可能的關係矩陣。
+    
+    \begin{columns}[T] % 開始分欄，T代表頂端對齊
+        \begin{column}{0.48\textwidth}
+            \begin{block}{枚舉邏輯}
+                \begin{itemize}
+                    \item 一個 $n \times n$ 矩陣共有 $n^2$ 格。
+                    \item 每格有 $0, 1$ 兩種可能，總組合為 $2^{n^2}$。
+                    \item 使用整數 $i$ 的位元依序填入矩陣。
+                \end{itemize}
+            \end{block}
+            
+            \begin{exampleblock}{實例：$n=2, i=6$}
+                $i=6 \implies (0110)_2$
+                \[
+                \begin{bmatrix} 
+                a_{00}=0 & a_{01}=1 \\ 
+                a_{10}=1 & a_{11}=0 
+                \end{bmatrix}
+                \]
+                \textbf{判定}：存在 $(0,1)$ 與 $(1,0)$，但 $a_{00}=0$（缺少 $(0,0)$），故為非遞移關係。
+            \end{exampleblock}
+        \end{column}
+
+        \begin{column}{0.48\textwidth}
+            \begin{alertblock}{效能瓶頸：組合爆炸}
+                隨著 $n$ 增加，計算量呈指數成長：
+                \begin{itemize}
+                    \item \textbf{$n=4$}：65,536 次 $\to$ 瞬間完成。
+                    \item \textbf{$n=5$}：3,355 萬次 $\to$ 約 1 秒。
+                    \item \textbf{$n=6$}：\textbf{687 億次} $\to$ \textbf{計算量激增 2048 倍}。
+                \end{itemize}
+            \end{alertblock}
+            
+            \vspace{5pt}
+            \textbf{結論}：\\
+            單純的「產生矩陣 $\to$ 檢查」邏輯在 $n=6$ 時會撞上硬體性能牆。
+        \end{column}
+    \end{columns}
 \end{frame}
 
-%第十頁
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    \begin{figure}[h]
-    \centering
-    \includegraphics[height=4.5cm]{1.PNG}
-    \end{figure}
-\end{frame}
+\subsection{演算法}
 
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    我們考慮 $n=2$ 的情況。當 $i$ 等於 6 時，它的二進位表示為 110。當 $j$ 遍歷所有的位元位置時，它將檢查 $i$ 的每一個位元。仍然假設 $n$ 等於 2，所以 $j$ 的範圍會是 0 到 3。
-    \\
-    以下是 $j$ 每一個值對應的結果：
-\end{frame}
-
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    \small
-    $j=0$：$(1 \ll 0)$ 等於 1（二進位表示為 0001）。因此，$i \& (1 \ll 0)$ 等於 $110 \& 0001$，等於 0000，這是零的，所以 if 語句不成立，相應的矩陣元素會保持為 0。
-
-    $j=1$：$(1 \ll 1)$ 等於 2（二進位表示為 0010）。因此，$i \& (1 \ll 1)$ 等於 $110 \& 0010$，等於 0010，這是非零的，所以 if 語句成立，相應的矩陣元素會被設置為 1。
-
-    $j=2$：$(1 \ll 2)$ 等於 4（二進位表示為 0100）。因此，$i \& (1 \ll 2)$ 等於 $110 \& 0100$，等於 0100，這是非零的，所以 if 語句成立，相應的矩陣元素會被設置為 1。
-
-    $j=3$：$(1 \ll 3)$ 等於 8（二進位表示為 1000）。然而，$i$ 只有 3 位，因此在這個位置上沒有 1，所以 $i \& (1 \ll 3)$ 的結果將是 0，if 語句不成立，相應的矩陣元素會保持為 0。
-\end{frame}
-
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    所以，當 $i$ 等於 6 時，最終的 $n \times n$ 矩陣如下：
-
-    \[
-    \begin{bmatrix}
-        0 & 1 \\
-        1 & 0
-    \end{bmatrix}
-    \]
-\end{frame}
-
-
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    \begin{figure}[h]
-    \centering
-    \includegraphics[height=5.5cm]{2.PNG}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{製作流程}
-\framesubtitle{python}
-    \small
-    首先，我們有一個變數 \texttt{is\_transitive}，它被初始化為 \texttt{True}。這個變數用於追蹤矩陣是否具有可傳遞性。
-
-    接下來，我們有三個嵌套的迴圈：\texttt{for k in range(n)}，\texttt{for i in range(n)}，和 \texttt{for j in range(n)}。這些迴圈用於遍歷矩陣的元素。
-
-    在迴圈內部，我們檢查三個條件：
+\begin{frame}[fragile]{演算法 A：基礎暴力法 (Naive)}
+    \footnotesize
+    這是最直觀的定義實作，使用三層嵌套迴圈檢查所有三元組 $(i, k, j)$。
+    
+    \begin{block}{Algorithm: is\_transitive\_naive(Matrix $M$, $n$)}
+        \begin{itemize}
+            \item \textbf{For} $i = 0$ \textbf{to} $n-1$:
+            \item \quad \textbf{For} $k = 0$ \textbf{to} $n-1$:
+            \item \quad \quad \textbf{If} $M[i][k] == 1$: \hfill \textit{\color{gray}// 若存在 $i \to k$}
+            \item \quad \quad \quad \textbf{For} $j = 0$ \textbf{to} $n-1$:
+            \item \quad \quad \quad \quad \textbf{If} $M[k][j] == 1$ \textbf{and} $M[i][j] == 0$:
+            \item \quad \quad \quad \quad \quad \textbf{Return False} \hfill \textit{\color{red}// 違反遞移律}
+        \end{itemize}
+        \textbf{Return True}
+    \end{block}
 
     \begin{itemize}
-        \item \texttt{matrix[i][k]}：檢查矩陣的第 $i$ 列和第 $k$ 行是否存在一個非零元素（代表存在一個從頂點 $i$ 到頂點 $k$ 的邊）。
-        \item \texttt{matrix[k][j]}：檢查矩陣的第 $k$ 列和第 $j$ 行是否存在一個非零元素（代表存在一個從頂點 $k$ 到頂點 $j$ 的邊）。
-        \item \texttt{not matrix[i][j]}：檢查矩陣的第 $i$ 列和第 $j$ 行是否不存在非零元素（代表不存在一個從頂點 $i$ 到頂點 $j$ 的邊）。
+        \item \textbf{複雜度}：$O(n^3)$
+        \item \textbf{缺點}：內層迴圈無法利用現代處理器的並行特性。
     \end{itemize}
 \end{frame}
 
-\begin{frame}{製作流程}
-\framesubtitle{python}
+\begin{frame}[fragile]{演算法 B：位元並行優化法 (Bit-vector)}
+    \footnotesize
+    利用電腦字長一次處理整列的特性，將 $O(n)$ 的內層迴圈壓平。
+    
+    \begin{block}{Algorithm: is\_transitive\_opt(Rows $R$, $n$)}
+        \begin{itemize}
+            \item \textbf{For} $i = 0$ \textbf{to} $n-1$:
+            \item \quad \textbf{For} $k = 0$ \textbf{to} $n-1$:
+            \item \quad \quad \textbf{If} ($k$-th bit of $R[i]$ is $1$): \hfill \textit{\color{gray}// 若存在 $i \to k$}
+            \item \quad \quad \quad \textit{\color{teal}// 檢查：Row[k] 是否為 Row[i] 的子集}
+            \item \quad \quad \quad \textbf{If} ($R[k]$ \textbf{AND} $R[i]$) $\neq R[k]$:
+            \item \quad \quad \quad \quad \textbf{Return False}
+        \end{itemize}
+        \textbf{Return True}
+    \end{block}
+
     \begin{itemize}
-    \item \texttt 如果這三個條件都滿足，表示矩陣中存在一個從頂點 $i$ 到頂點 $j$ 的邊，但原本的矩陣中不存在。這違反了可傳遞性的定義，因此將 \texttt{is\_transitive} 設為 \texttt{False}。
-    \item 檢查\texttt{is\_transitive} 的值。如果 \texttt{is\_transitive} 仍然為 \texttt{True}，表示矩陣是可傳遞性的。在這種情況下，我們將 \texttt{count} 變數加1，表示找到了一個可傳遞性的矩陣。
+        \item \textbf{複雜度}：實質降至 $O(n^2)$ (當 $n \le 64$)
+        \item \textbf{關鍵運算}：將 $n$ 次判斷簡化為單一位元運算指令。
     \end{itemize}
 \end{frame}
+
+
+
+
+\begin{frame}{優化原理}
+    \scriptsize
+    \begin{columns}[T]
+        % 左半部：範例與定義
+        \begin{column}{0.5\textwidth}
+            \textbf{1. 關係矩陣的位元向量化}
+            \begin{itemize}
+                \item \textbf{Row 0}: $0\ 1\ 0$ ($0 \to 1$) $\to$ \texttt{dec: 2}
+                \item \textbf{Row 1}: $0\ 0\ 1$ ($1 \to 2$) $\to$ \texttt{dec: 4}
+                \item \textbf{Row 2}: $0\ 0\ 0$ (無連向) $\to$ \texttt{dec: 0}
+            \end{itemize}
+            
+            \vspace{5pt}
+            \textbf{2. 判定邏輯 ($i=0, k=1$)}
+            \begin{itemize}
+                \item 既然 $0 \to 1$，則 $1$ 能到的地方，$0$ 也必須能到。
+                \item \textbf{條件}：Row 1 必須是 Row 0 的「子集」。
+                \item \textbf{運算}：\texttt{(R[1] \& R[0]) == R[1]}
+            \end{itemize}
+        \end{column}
+
+        % 右半部：運算細節與效能（往上擠，避開下方）
+        \begin{column}{0.45\textwidth}
+            \begin{exampleblock}{運算過程實測}
+                \begin{itemize}
+                    \item \texttt{R[1]: 0 0 1}
+                    \item \texttt{R[0]: 0 1 0}
+                    \item \texttt{AND} 結果：\texttt{0 0 0}
+                \end{itemize}
+                \textbf{結果}：\texttt{000} $\neq$ \texttt{001} (判定失敗) \\
+                $\implies$ 此關係非遞移。
+            \end{exampleblock}
+
+            \begin{block}{優化效益}
+                \begin{itemize}
+                    \item \textbf{暴力法}：需用迴圈逐一檢查每個 $j$，耗時 $O(n)$。
+                    \item \textbf{位元優化}：利用 CPU \texttt{AND} 指令一次處理整列。速度提升約 $n$ 倍。
+                \end{itemize}
+            \end{block}
+            
+            % 這裡留白，給右下角的 Logo 空間
+            \vspace{3cm} 
+        \end{column}
+    \end{columns}
+\end{frame}
+
+
+\begin{frame}{位元優化實測：以 $i=51$ 為例}
+    \footnotesize
+    $i=51$ 的二進位映射為 \texttt{000 110 011}，對應矩陣：
+    \begin{center}
+        Row 0: \texttt{000} \quad Row 1: \texttt{110} \quad Row 2: \texttt{011}
+    \end{center}
+    
+    根據程式邏輯，系統會依序檢查矩陣中值為 1 的位置：
+    
+    \begin{block}{驗證步驟 (追蹤矩陣中的 1)}
+        \begin{enumerate}
+            \item \textbf{驗證 (1,0)}：
+            1 可以走到 0，需滿足 \texttt{Row 0 \& Row 1 == Row 0}。 \\
+            運算：\texttt{000 \& 110 = 000} \hfill (成立 \checkmark)
+            
+            \item \textbf{驗證 (1,1)}：
+            1 可以走到 1，需滿足 \texttt{Row 1 \& Row 1 == Row 1}。 \\
+            運算：\texttt{110 \& 110 = 110} \hfill (成立 \checkmark)
+            
+            \item \textbf{驗證 (2,1)}：
+            2 可以走到 1，需滿足 \texttt{Row 1 \& Row 2 == Row 1}。 \\
+            運算：\texttt{110 \& 011 = 010} \\
+            結果：\texttt{010} $\neq$ \texttt{Row 1 (110)} \hfill (\textbf{不成立 \scalebox{0.8}{X}})
+        \end{enumerate}
+    \end{block}
+
+    
+
+    \textbf{結論}：
+    由於驗證 (2,1) 失敗，代表存在路徑 $2 \to 1 \to 2$ 但缺少直接關係 $2 \to 2$。程式觸發 \textbf{Early Exit}，判定此關係非遞移。
+\end{frame}
+
 
 \section{成果與討論}
 \subsection{遭遇困難}
 
 %第九頁
 \begin{frame}{遭遇困難}
-\framesubtitle{python}
-\begin{itemize}
-    \item \texttt 無法找到遞迴關係，因為矩陣只有對角線的位置不會受到影響，而其他位置都會受到影響
-    \item \texttt 用python的$i \& (\text{1} \ll j)$的指令創造所有可能的矩陣
-    \item \texttt 下圖為第n個元素遞移關係的數量，他在OEIS上已經被登入為一個編號A006905的數列，但我只能跑出前5項，之後就開始卡了，因為時間複雜度太高了
-\end{itemize}
-\end{frame}
-
-\begin{frame}{遭遇困難}
-\framesubtitle{python}
-        \begin{figure}[h]
-        \includegraphics[totalheight=6cm]{8.PNG}
-        \end{figure}
-\end{frame}
-
-\subsection{數學背景}
-
-%第九頁
-\begin{frame}{數學背景}
-\framesubtitle{python}
-    \small
-    \textbf{\large 關於遞移性}
+    \scriptsize
     \begin{itemize}
-        \item \texttt 遞移性檢測：程式碼中的主要目標是檢測給定的關係矩陣是否具有遞移性。它通過遍歷矩陣中的所有元素對 (i, j) 和 (j, k)，並檢查是否存在 (i, k)。如果存在 (i, j) 和 (j, k)，但不存在 (i, k)，則該矩陣不具有遞移性。
-        \item \texttt 停止檢測：當發現矩陣中的一對元素 (i, k) 不滿足遞移性時，程式碼會立即停止檢測，並將遞移性標誌設置為 False。這是因為根據遞移性的定義，只需要找到一個不符合的對，就可以確定關係矩陣不具有遞移性，不需要繼續進行檢測。
+        \item \textbf{運算量爆炸性成長}：
+        當 $n=5$ 時，C 語言不到 1 秒就跑完 3,355 萬個組合；但 $n=6$ 直接飆升到 \textbf{687 億}個。即便 C 語言效率很高，這種「千倍等級」的差距還是讓普通電腦跑得非常吃力，這是我第一次親身體會到演算法複雜度的威力。
+        
+        \item \textbf{找不到規律走捷徑}：
+        我原本想嘗試用遞迴的方法，看能不能用 $n-1$ 的結果推導出 $n$ 的數量。但後來發現「遞移性」只要矩陣中任一個位子改變，整個性質就得重新判定，沒辦法「偷懶」少算，只能老老實實地全部窮舉。
+
+        \item \textbf{卡在語法細節與 Debug}：
+        在實作過程中，我花了很多時間在處理模組瑣碎的語法。原本以為邏輯對了就沒事，但常常因為括號位置、位元運算優先權，或是陣列索引值算錯，導致跑出來的答案跟正確數列完全對不起來。為了找出這些小 bug，耗費了大量的精神去反覆檢查。
     \end{itemize}
 \end{frame}
 
-\begin{frame}{數學背景}
-\framesubtitle{python}
+\begin{frame}{數據對照：OEIS A006905 數列}
     \small
-    \textbf{\large 關於python}
+    我將程式跑出來的結果與網路上 OEIS 數列對照，確認前 5 項完全正確：
+    \begin{center}
+        \begin{tabular}{|c|r|r|}
+            \hline
+            $n$ & 總矩陣數量 ($2^{n^2}$) & 遞移關係數量 (我的結果) \\
+            \hline
+            1 & 2 & 2 \\
+            2 & 16 & 13 \\
+            3 & 512 & 171 \\
+            4 & 65,536 & 3,994 \\
+            5 & 33,554,432 & 154,303 \\
+            \hline
+            \textbf{6} & \textbf{687 億} & \textbf{等待運算中...} \\
+            \hline
+        \end{tabular}
+    \end{center}
+    \footnotesize 註：$n=6$ 的計算量是 $n=5$ 的 2048 倍，這就是為什麼電腦會卡住的原因。
+\end{frame}
+
+\begin{frame}{數據對照：OEIS A006905 數列}
+    \begin{figure}[h]
+    \includegraphics[totalheight=6.5cm]{8.PNG}
+    \end{figure}
+\end{frame}
+
+\subsection{心得}
+
+\section{成果}
+
+\begin{frame}{學到的技巧}
+    \small
+    在寫程式的過程中，我學到了幾個關鍵技巧：
     \begin{itemize}
-        \item \texttt 必須理解python的符號概念(i.e., \texttt{\&} 和 \texttt{<<})
-        \item \texttt 巢狀迴圈的寫法
-        \item \texttt 創造一個n*n的矩陣，matrix = [[0 for \textunderscore in range(n)] for \textunderscore in range(n)]
-        \item \texttt 初始化is\textunderscore transitive的概念
+        \item \textbf{位元運算的魔力}：
+        以前課本說的 \texttt{<<} (左移) 和 \texttt{\&} (位元與) 真的很實用。我用一個整數來代表矩陣的一列，這樣判斷遞移性時，速度比寫三層迴圈快非常多。
+        
+        \item \textbf{及時判斷 (Early Exit)}：
+        不用把整個矩陣檢查完。只要發現有一個地方不符合 $a_{ik}=1, a_{kj}=1 \implies a_{ij}=1$，就立刻跳出，這樣可以節省很多時間。
+
+        \item \textbf{狀態空間的映射 (State Mapping)}：
+        學習如何將一個超大的整數 $i$ 透過位元偏移（Offset）映射回 $n \times n$ 的關係矩陣。這讓我也理解到，當狀態數達到 $2^{n^2}$ 時，如何高效地在「整數索引」與「矩陣結構」間轉換是處理組合問題的核心。
     \end{itemize}
 \end{frame}
 
-\subsection{成果}
+\subsection{照片}
 
-\begin{frame}{成果}
-\framesubtitle{python}
+\begin{frame}{照片}
+\framesubtitle{compiler}
     \begin{figure}[h]
-    \includegraphics[totalheight=6cm]{9.PNG}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{成果}
-\framesubtitle{python}
-    \begin{figure}[h]
-    \includegraphics[totalheight=4.5cm]{5.PNG}
-    \includegraphics[totalheight=4.5cm]{6.PNG}
-    \includegraphics[totalheight=4.5cm]{7.PNG}
-    \end{figure}
-\end{frame}
-
-\begin{frame}{成果}
-\framesubtitle{python}
-    \begin{figure}[h]
-    \includegraphics[totalheight=2.55cm]{10.PNG}
+    \includegraphics[totalheight=6.5cm]{20.PNG}
     \end{figure}
 \end{frame}
 
@@ -372,9 +469,11 @@
 \subsection{參考資料}
 \begin{frame}{參考資料}
     \begin{thebibliography}{9}
-        \bibitem{g1} Python模組以及指令參考資料. [網址] \url{https://docs.python.org/3/library/stdtypes.html#bitwise-operations-on-integer-types}
+        \bibitem{g2} 所有資料(latex開發碼/c code/照片) [網址] \url{https://github.com/david910330d1d1d1d110-cyber/561}
         \bibitem{g2} 前17項遞移關係數量、相關證明 [網址] \url{https://www.researchgate.net/publication/352383148_On_the_number_of_transitive_relations_on_a_set}
-        \bibitem{g3} 其他關係的補充 [網址] \url{https://www.youtube.com/watch?v=NAdHAiFyU1M}
+        \bibitem{g3} 其他關係的補充 [網址] \url{https://www.youtube.com/watch?v=GvNGf9Gki7o}
+        \bibitem{g1} C 的時間模組. [網址] \url{https://pydoing.blogspot.com/2010/07/c-stdtime.html}
+
     \end{thebibliography}
 \end{frame}
 
