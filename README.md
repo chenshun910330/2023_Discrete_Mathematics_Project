@@ -60,4 +60,5 @@ for (int i = 0; i < n; i++)
 * **GitHub**: [[你的 GitHub 連結](https://github.com/chenshun910330)]
 * **Email**: [David910330D1d1d1d150@gmail.com]
 * **Phone**: 0965447093
-
+---
+**林辰訓 (Lin Chen-xun)** 數學系 
