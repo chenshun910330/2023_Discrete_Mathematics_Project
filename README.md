@@ -58,6 +58,6 @@ for (int i = 0; i < n; i++)
 
 ### 📫 聯繫方式 (Contact Info)
 * **GitHub**: [[你的 GitHub 連結](https://github.com/chenshun910330)]
-* **Email**: [你的電子郵件]
-* **Personal Site**: [你的個人網站連結]
+* **Email**: [David910330D1d1d1d150@gmail.com]
+* **Phone**: 0965447093
 
