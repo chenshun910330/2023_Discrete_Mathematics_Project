@@ -57,13 +57,7 @@ for (int i = 0; i < n; i++)
 ---
 
 ### 📫 聯繫方式 (Contact Info)
-* **GitHub**: [你的 GitHub 連結]
+* **GitHub**: [[你的 GitHub 連結](https://github.com/chenshun910330)]
 * **Email**: [你的電子郵件]
 * **Personal Site**: [你的個人網站連結]
 
-
-#### 🧪 技術突破
-
-* **Early Exit 策略**：發現反例立即跳出，大幅降低平均運算時間。
-
-* **底層優化**：透過 C 語言處理記憶體映射與位元運算，壓榨硬體效能以對抗指數級成長的計算量。
