@@ -34,7 +34,7 @@ for (int i = 0; i < n; i++)
 ```
 
 ### 2. 位元並行優化 (Bit-vector Optimization) - $O(n^2)$
-    將矩陣的每一列存儲為 **Bit-vector**，利用 CPU 位元運算一次處理多個元素的邏輯判斷。
+將矩陣的每一列存儲為 **Bit-vector**，利用 CPU 位元運算一次處理多個元素的邏輯判斷。
     ```c
     // 關鍵優化：利用位元交集運算快速判斷遞移律
     if ((Row[k] & Row[i]) != Row[k]) return NOT_TRANSITIVE;
